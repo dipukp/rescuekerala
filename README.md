@@ -81,6 +81,66 @@ python3 manage.py runserver
 ```
 7. Now open localhost:8000 in the browser
 
+#### Setting up the dev/test environment as docker container
+If you use Docker and would like to do the development/testing in a Docker container, the following steps can be followed:
+
+1. Clone the repoi, setup the env file and settings.py file (under floodrelief) as mentioned above (refer above sections)
+
+2. Once the directory is ready, change the working directory to "rescuekerala" directory, create a file named dbsetup.sql with the following contents
+```
+CREATE DATABASE rescuekerala;
+CREATE USER rescueuser WITH PASSWORD 'password';
+GRANT ALL PRIVILEGES ON DATABASE rescuekerala TO rescueuser;
+```
+
+3. In the rescuekerala directory, create a file named Dockerfile with the following contents:
+```
+FROM postgres:alpine
+RUN apk update && apk upgrade && \
+    apk add --no-cache alpine-sdk && \
+    apk add --no-cache bash git openssh && \
+    apk add --no-cache python3 && \
+    python3 -m ensurepip && \
+    rm -r /usr/lib/python*/ensurepip && \
+    pip3 install --upgrade pip setuptools && \
+    if [ ! -e /usr/bin/pip ]; then ln -s pip3 /usr/bin/pip ; fi && \
+    if [[ ! -e /usr/bin/python ]]; then ln -sf /usr/bin/python3 /usr/bin/python; fi && \
+    apk add postgresql-dev gcc python3-dev musl-dev && \
+    rm -r /root/.cache
+RUN pip install psycopg2
+COPY dbsetup.sql /docker-entrypoint-initdb.d/
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install -r /tmp/requirements.txt
+```
+
+The above list is a draft list and could be optimized based on further testing! Feel free to udpate.
+
+4. Build docker image. Example (the name can be anything)
+```
+docker build -t rescuekerala_test .
+```
+
+5. Run the docker image
+```
+docker run -v $(pwd):/rescuekerala -d --rm -p 8000:8000 -e POSTGRES_PASSWORD=postgres --name rescuekerala_test rescuekerala_test
+```
+
+6. Connect to the running container, initialize and run the webserver
+```
+docker exec -it <container-id> /bin/bash
+```
+
+In the shell that comes up, run the following in sequence:
+```
+python3 manage.py migrate
+python3 manage.py collectstatic
+python3 manage.py runserver 0.0.0.0:8000
+```
+
+7. Now you can open the site in a browser (localhost:8000) and continue test/development. Since the local directory (rescuekerala) is mapped to the container as "/rescuekerala", whatever changes that is made in the host directory are reflected inside the container too. When the source files are changed in the host machine, the webserver typically restarts automatically, the UI needs to be refreshed.
+
+8. To stop the container, use "docker stop <container-id>" 
+
 ## How can you help?
 
 ### By testing
