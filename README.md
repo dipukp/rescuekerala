@@ -135,6 +135,7 @@ docker exec -it <container-id> /bin/bash
 
 In the shell that comes up, run the following in sequence:
 ```
+cd /rescuekerala
 python3 manage.py migrate
 python3 manage.py collectstatic
 python3 manage.py runserver 0.0.0.0:8000
